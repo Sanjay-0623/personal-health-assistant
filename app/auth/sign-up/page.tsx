@@ -33,9 +33,14 @@ export default function Page() {
     }
 
     try {
-      const supabase = createClient()
+      console.log("[v0] Starting sign up process")
+      console.log("[v0] Environment check:", {
+        hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      })
 
-      console.log("[v0] Attempting sign up with email:", email)
+      const supabase = createClient()
+      console.log("[v0] Client created, attempting sign up with:", email)
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -48,13 +53,27 @@ export default function Page() {
         },
       })
 
-      console.log("[v0] Sign up response:", { data, error: signUpError })
+      console.log("[v0] Sign up API response:", {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        error: signUpError,
+      })
 
-      if (signUpError) throw signUpError
+      if (signUpError) {
+        console.error("[v0] Supabase sign up error:", signUpError)
+        throw signUpError
+      }
 
+      console.log("[v0] Sign up successful, redirecting...")
       router.push("/auth/sign-up-success")
     } catch (error: unknown) {
-      console.error("[v0] Sign up error:", error)
+      console.error("[v0] Sign up error details:", {
+        error,
+        errorType: typeof error,
+        errorName: error instanceof Error ? error.name : "unknown",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
       const errorMessage = error instanceof Error ? error.message : "An error occurred during sign up"
       setError(errorMessage)
     } finally {
