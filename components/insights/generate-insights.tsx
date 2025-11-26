@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Brain, Sparkles, Loader2, CheckCircle2 } from "lucide-react"
+import { Brain, Sparkles, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -21,6 +21,8 @@ export function GenerateInsights({ userId }: GenerateInsightsProps) {
     setError(null)
     setSuccess(false)
 
+    console.log("[v0] Starting insight generation for user:", userId)
+
     try {
       const response = await fetch("/api/analyze-health", {
         method: "POST",
@@ -29,20 +31,25 @@ export function GenerateInsights({ userId }: GenerateInsightsProps) {
         },
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to generate insights")
-      }
-
+      console.log("[v0] API response status:", response.status)
       const data = await response.json()
+      console.log("[v0] API response data:", data)
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Failed to generate insights")
+      }
 
       if (data.success) {
         setSuccess(true)
+        console.log("[v0] Insights generated successfully, redirecting...")
         setTimeout(() => {
           router.push("/dashboard/insights")
         }, 2000)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.error("[v0] Error generating insights:", err)
+      const errorMessage = err instanceof Error ? err.message : "An error occurred"
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -89,7 +96,15 @@ export function GenerateInsights({ userId }: GenerateInsightsProps) {
             </ul>
           </div>
 
-          {error && <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Failed to generate insights</p>
+                <p className="mt-1 text-xs">{error}</p>
+              </div>
+            </div>
+          )}
 
           {success && (
             <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4 text-sm text-green-600">
