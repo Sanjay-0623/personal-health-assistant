@@ -1,4 +1,3 @@
-import { generateObject } from "ai"
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -93,33 +92,168 @@ export async function POST(request: Request) {
 
     console.log("[v0] Health data summary prepared:", JSON.stringify(healthDataSummary, null, 2))
 
-    // Generate AI analysis
-    console.log("[v0] Calling AI model...")
-    const { object } = await generateObject({
-      model: "openai/gpt-4o-mini",
-      schema: healthAnalysisSchema,
-      prompt: `You are an AI health assistant analyzing a patient's health data. Provide comprehensive health insights, personalized recommendations, and identify any concerning patterns.
+    const hasMetrics = recentMetrics && recentMetrics.length > 0
+    const hasMedications = medications && medications.length > 0
 
-Patient Health Data:
-${JSON.stringify(healthDataSummary, null, 2)}
+    // Calculate health score based on available data
+    let healthScore = 75 // baseline
 
-${
-  recentMetrics && recentMetrics.length > 0
-    ? "Analyze this data and provide:"
-    : "Note: This is a new user with limited health data. Provide general health recommendations and encourage them to start tracking their health metrics. Provide:"
-}
+    if (hasMetrics) {
+      // Adjust score based on recent metrics
+      const avgHeartRate =
+        recentMetrics
+          .filter((m) => m.metric_type === "heart_rate")
+          .slice(0, 5)
+          .reduce((sum, m) => sum + Number(m.value), 0) / 5
 
-1. An overall health score (0-100)${recentMetrics && recentMetrics.length > 0 ? " based on the available data" : " (use 75 as a baseline for new users)"}
-2. 3-5 personalized health insights covering lifestyle, nutrition, exercise, sleep, and preventive care
-3. ${recentMetrics && recentMetrics.length > 0 ? "Any health alerts for abnormal readings or concerning patterns" : "Helpful tips for starting a health tracking journey (create at least one low-severity alert encouraging them to log their first health metrics)"}
+      if (avgHeartRate && avgHeartRate >= 60 && avgHeartRate <= 100) {
+        healthScore += 5
+      }
 
-Be specific, actionable, and supportive in your recommendations. Focus on preventive care and wellness optimization.`,
+      // Check for consistent tracking
+      if (recentMetrics.length >= 10) {
+        healthScore += 10
+      }
+    }
+
+    // Generate insights based on data
+    const insights = []
+
+    if (hasMetrics) {
+      const heartRateMetrics = recentMetrics.filter((m) => m.metric_type === "heart_rate")
+      if (heartRateMetrics.length > 0) {
+        const avgHR =
+          heartRateMetrics.slice(0, 5).reduce((sum, m) => sum + Number(m.value), 0) /
+          heartRateMetrics.slice(0, 5).length
+        insights.push({
+          type: "lifestyle",
+          title: "Heart Rate Monitoring",
+          content: `Your average heart rate is ${Math.round(avgHR)} bpm. ${avgHR >= 60 && avgHR <= 100 ? "This is within the normal range." : "Consider consulting with a healthcare provider about this reading."}`,
+          recommendations: [
+            "Continue regular heart rate monitoring",
+            "Maintain consistent exercise routine",
+            "Monitor any unusual changes in resting heart rate",
+          ],
+          confidenceScore: 0.85,
+        })
+      }
+
+      const bpMetrics = recentMetrics.filter((m) => m.metric_type === "blood_pressure")
+      if (bpMetrics.length > 0) {
+        insights.push({
+          type: "preventive_care",
+          title: "Blood Pressure Tracking",
+          content: "You're actively monitoring your blood pressure, which is excellent for cardiovascular health.",
+          recommendations: [
+            "Continue regular blood pressure checks",
+            "Maintain a low-sodium diet",
+            "Stay hydrated throughout the day",
+          ],
+          confidenceScore: 0.8,
+        })
+      }
+    } else {
+      insights.push({
+        type: "lifestyle",
+        title: "Start Your Health Journey",
+        content:
+          "Welcome to your health assistant! Begin by tracking your vital signs regularly to establish your health baseline.",
+        recommendations: [
+          "Log your heart rate and blood pressure daily",
+          "Track your activity levels and sleep patterns",
+          "Set up medication reminders if needed",
+        ],
+        confidenceScore: 0.9,
+      })
+    }
+
+    // Add nutrition insight
+    insights.push({
+      type: "nutrition",
+      title: "Balanced Nutrition",
+      content: "Maintaining a balanced diet is crucial for overall health and wellness.",
+      recommendations: [
+        "Eat a variety of colorful fruits and vegetables",
+        "Stay hydrated with at least 8 glasses of water daily",
+        "Limit processed foods and added sugars",
+      ],
+      confidenceScore: 0.85,
     })
 
-    console.log("[v0] AI analysis complete:", object)
+    // Add exercise insight
+    insights.push({
+      type: "exercise",
+      title: "Regular Physical Activity",
+      content: "Regular exercise is essential for maintaining cardiovascular health and overall wellness.",
+      recommendations: [
+        "Aim for 150 minutes of moderate exercise per week",
+        "Include both cardio and strength training",
+        "Take breaks to stretch if you sit for long periods",
+      ],
+      confidenceScore: 0.9,
+    })
+
+    // Generate alerts
+    const alerts = []
+
+    if (!hasMetrics) {
+      alerts.push({
+        severity: "low",
+        title: "Start Tracking Your Health",
+        message:
+          "Begin your health journey by logging your first vital signs. Regular tracking helps identify trends and potential health concerns early.",
+        alertType: "appointment",
+      })
+    }
+
+    if (hasMetrics) {
+      // Check for abnormal readings
+      const highBP = recentMetrics.some(
+        (m) => m.metric_type === "blood_pressure" && (Number(m.systolic) > 140 || Number(m.diastolic) > 90),
+      )
+
+      if (highBP) {
+        alerts.push({
+          severity: "medium",
+          title: "Elevated Blood Pressure Detected",
+          message:
+            "Some of your blood pressure readings are above the normal range. Consider scheduling a check-up with your healthcare provider.",
+          alertType: "abnormal_reading",
+        })
+      }
+
+      const highHR = recentMetrics.some((m) => m.metric_type === "heart_rate" && Number(m.value) > 100)
+
+      if (highHR) {
+        alerts.push({
+          severity: "low",
+          title: "Elevated Heart Rate",
+          message:
+            "Your heart rate has been elevated recently. This could be due to activity, stress, or caffeine. Monitor and consult a doctor if it persists.",
+          alertType: "abnormal_reading",
+        })
+      }
+    }
+
+    if (hasMedications) {
+      alerts.push({
+        severity: "low",
+        title: "Medication Reminders Active",
+        message: `You have ${medications.length} active medication${medications.length > 1 ? "s" : ""}. Check the Medications tab to ensure you're taking them as prescribed.`,
+        alertType: "medication_reminder",
+      })
+    }
+
+    const analysisResult = {
+      overallHealthScore: Math.min(100, healthScore),
+      insights,
+      alerts,
+    }
+
+    console.log("[v0] Rule-based analysis complete:", analysisResult)
 
     // Save insights to database
-    for (const insight of object.insights) {
+    for (const insight of analysisResult.insights) {
       const { error: insightError } = await supabase.from("ai_insights").insert({
         user_id: user.id,
         insight_type: insight.type,
@@ -134,7 +268,7 @@ Be specific, actionable, and supportive in your recommendations. Focus on preven
     }
 
     // Save alerts to database
-    for (const alert of object.alerts) {
+    for (const alert of analysisResult.alerts) {
       const { error: alertError } = await supabase.from("health_alerts").insert({
         user_id: user.id,
         alert_type: alert.alertType,
@@ -151,7 +285,7 @@ Be specific, actionable, and supportive in your recommendations. Focus on preven
 
     return NextResponse.json({
       success: true,
-      analysis: object,
+      analysis: analysisResult,
     })
   } catch (error) {
     console.error("[v0] Error analyzing health data:", error)
@@ -159,7 +293,6 @@ Be specific, actionable, and supportive in your recommendations. Focus on preven
       {
         error: "Failed to analyze health data",
         details: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 },
     )
