@@ -28,8 +28,8 @@ export function EmergencyPanel({ userId, profile }: EmergencyPanelProps) {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Medical Emergency</AlertTitle>
         <AlertDescription>
-          If you are experiencing a life-threatening emergency, call 911 immediately or go to the nearest emergency
-          room.
+          If you are experiencing a life-threatening emergency, call 108 (Ambulance) or 102 (Medical Emergency)
+          immediately or go to the nearest emergency room.
         </AlertDescription>
       </Alert>
 
@@ -46,10 +46,19 @@ export function EmergencyPanel({ userId, profile }: EmergencyPanelProps) {
               variant="destructive"
               size="lg"
               className="w-full text-lg"
-              onClick={() => handleEmergencyCall("911")}
+              onClick={() => handleEmergencyCall("108")}
             >
               <Phone className="mr-2 h-5 w-5" />
-              Call 911
+              Call 108 (Ambulance)
+            </Button>
+            <Button
+              variant="destructive"
+              size="lg"
+              className="w-full text-lg"
+              onClick={() => handleEmergencyCall("102")}
+            >
+              <Phone className="mr-2 h-5 w-5" />
+              Call 102 (Medical Emergency)
             </Button>
             <p className="text-center text-xs text-muted-foreground">For immediate life-threatening emergencies</p>
           </CardContent>
@@ -184,18 +193,50 @@ export function EmergencyPanel({ userId, profile }: EmergencyPanelProps) {
             <Button
               variant="outline"
               className="justify-start bg-transparent"
-              onClick={() => handleEmergencyCall("988")}
+              onClick={() => handleEmergencyCall("104")}
             >
               <Phone className="mr-2 h-4 w-4" />
-              Suicide & Crisis Lifeline (988)
+              National Health Helpline (104)
             </Button>
             <Button
               variant="outline"
               className="justify-start bg-transparent"
-              onClick={() => window.open("https://www.poison.org", "_blank")}
+              onClick={() => handleEmergencyCall("9152987821")}
             >
               <Phone className="mr-2 h-4 w-4" />
-              Poison Control
+              Mental Health Helpline (COOJ)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start bg-transparent"
+              onClick={() => handleEmergencyCall("100")}
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Police Emergency (100)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start bg-transparent"
+              onClick={() => handleEmergencyCall("1098")}
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Child Helpline (1098)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start bg-transparent"
+              onClick={() => handleEmergencyCall("1091")}
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Women Helpline (1091)
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start bg-transparent"
+              onClick={() => handleEmergencyCall("14567")}
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Senior Citizen Helpline (14567)
             </Button>
             <Button variant="outline" className="justify-start bg-transparent" asChild>
               <Link href="/dashboard/chat">
